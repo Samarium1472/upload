@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>上传文档到智能助手</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .upload-modal {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 500px;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .modal-header h2 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .modal-body {
+            padding: 30px;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #eef1ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .browse-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .browse-btn:hover {
+            background: #5a67d8;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            margin-top: 20px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .or-divider {
+            text-align: center;
+            margin: 20px 0;
+            color: #718096;
+            position: relative;
+        }
+        
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 45%;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        
+        .or-divider::before { left: 0; }
+        .or-divider::after { right: 0; }
+        
+        .url-upload {
+            display: none;
+        }
+        
+        .url-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .upload-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        
+        .supported-formats {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #718096;
+        }
+        
+        .format-icons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .format-icon {
+            background: #f7fafc;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-modal" id="uploadModal">
+        <div class="modal-header">
+            <h2>📤 上传文档</h2>
+            <p>上传后可在聊天中提问，我会基于文档内容回答</p>
+        </div>
+        
+        <div class="modal-body">
+            <!-- 拖拽上传区域 -->
+            <div class="upload-area" id="dropZone">
+                <div class="upload-icon">📁</div>
+                <p><strong>拖放文件到此处</strong></p>
+                <p>或</p>
+                <button class="browse-btn" onclick="document.getElementById('fileInput').click()">选择文件</button>
+                <input type="file" id="fileInput" style="display: none" onchange="handleFileSelect(this.files[0])">
+            </div>
+            
+            <div class="or-divider">或</div>
+            
+            <!-- URL上传 -->
+            <div class="url-upload" id="urlUpload">
+                <input type="text" class="url-input" id="fileUrl" placeholder="输入文档链接 (http://或https://)">
+                <button class="upload-btn" onclick="uploadByUrl()">上传链接文档</button>
+            </div>
+            
+            <button class="browse-btn" style="width: 100%; margin-top: 10px;" onclick="toggleUploadMethod()">切换为链接上传</button>
+            
+            <!-- 进度条 -->
+            <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            
+            <!-- 状态消息 -->
+            <div class="status" id="statusMessage"></div>
+            
+            <!-- 支持格式 -->
+            <div class="supported-formats">
+                <p>支持格式：</p>
+                <div class="format-icons">
+                    <span class="format-icon">📄 PDF</span>
+                    <span class="format-icon">📝 Word</span>
+                    <span class="format-icon">📊 Excel</span>
+                    <span class="format-icon">📃 TXT</span>
+                </div>
+                <p style="margin-top: 10px;">最大文件大小：10MB</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let isUrlMode = false;
+        const uploadUrl = 'https://your-n8n.com/webhook/document-upload'; // 替换为您的Webhook URL
+        
+        // 拖放功能
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            dropZone.classList.add('dragover');
+        }
+        
+        function unhighlight() {
+            dropZone.classList.remove('dragover');
+        }
+        
+        dropZone.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            handleFileSelect(files[0]);
+        }
+        
+        // 处理文件选择
+        function handleFileSelect(file) {
+            if (!file) return;
+            
+            // 检查文件大小（10MB限制）
+            if (file.size > 10 * 1024 * 1024) {
+                showStatus('文件大小不能超过10MB', 'error');
+                return;
+            }
+            
+            // 检查文件类型
+            const allowedTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/plain',
+                'text/markdown'
+            ];
+            
+            if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|doc|docx|xls|xlsx|txt|md)$/i)) {
+                showStatus('不支持的文件格式，请上传PDF、Word、Excel或TXT文件', 'error');
+                return;
+            }
+            
+            uploadFile(file);
+        }
+        
+        // 上传文件
+        async function uploadFile(file) {
+            showProgress();
+            updateProgress(30);
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileName', file.name);
+            formData.append('timestamp', new Date().toISOString());
+            
+            try {
+                updateProgress(60);
+                
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                updateProgress(90);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateProgress(100);
+                    showStatus('✅ 上传成功！请返回聊天界面开始提问。', 'success');
+                    
+                    // 3秒后关闭窗口
+                    setTimeout(() => {
+                        window.close();
+                    }, 3000);
+                } else {
+                    throw new Error('上传失败');
+                }
+            } catch (error) {
+                showStatus(`❌ 上传失败：${error.message}`, 'error');
+                updateProgress(0);
+            }
+        }
+        
+        // URL上传
+        async function uploadByUrl() {
+            const url = document.getElementById('fileUrl').value.trim();
+            
+            if (!url) {
+                showStatus('请输入文档链接', 'error');
+                return;
+            }
+            
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                showStatus('请输入有效的HTTP/HTTPS链接', 'error');
+                return;
+            }
+            
+            showProgress();
+            updateProgress(30);
+            
+            try {
+                const formData = new FormData();
+                formData.append('url', url);
+                formData.append('timestamp', new Date().toISOString());
+                
+                updateProgress(60);
+                
+                const response = await fetch(uploadUrl, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                updateProgress(90);
+                
+                if (response.ok) {
+                    updateProgress(100);
+                    showStatus('✅ 链接文档已开始处理！请返回聊天界面。', 'success');
+                    
+                    setTimeout(() => {
+                        window.close();
+                    }, 3000);
+                } else {
+                    throw new Error('处理链接失败');
+                }
+            } catch (error) {
+                showStatus(`❌ 处理失败：${error.message}`, 'error');
+                updateProgress(0);
+            }
+        }
+        
+        // 切换上传方式
+        function toggleUploadMethod() {
+            isUrlMode = !isUrlMode;
+            const urlUpload = document.getElementById('urlUpload');
+            const dropZone = document.getElementById('dropZone');
+            const toggleBtn = document.querySelector('.browse-btn[style*="width: 100%"]');
+            
+            if (isUrlMode) {
+                urlUpload.style.display = 'block';
+                dropZone.style.display = 'none';
+                toggleBtn.textContent = '切换为文件上传';
+            } else {
+                urlUpload.style.display = 'none';
+                dropZone.style.display = 'block';
+                toggleBtn.textContent = '切换为链接上传';
+            }
+        }
+        
+        // 显示进度条
+        function showProgress() {
+            document.getElementById('progressBar').style.display = 'block';
+        }
+        
+        // 更新进度
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+        }
+        
+        // 显示状态消息
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            statusEl.style.display = 'block';
+        }
+        
+        // 自动关闭提示
+        window.addEventListener('load', () => {
+            console.log('上传页面已加载，5分钟后自动关闭');
+            setTimeout(() => {
+                if (confirm('上传窗口将关闭，您可以在聊天中重新打开。')) {
+                    window.close();
+                }
+            }, 300000); // 5分钟
+        });
+    </script>
+</body>
+</html>
